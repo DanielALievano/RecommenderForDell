@@ -144,6 +144,14 @@ async def _run_background_inference(
     except Exception:
         insight = prior_insight or SessionInsight()
 
+    # Merge products_of_interest across calls — never lose previously seen products
+    if prior_insight and prior_insight.products_of_interest:
+        merged = list(prior_insight.products_of_interest)
+        for p in insight.products_of_interest:
+            if p not in merged:
+                merged.append(p)
+        insight.products_of_interest = merged[:10]  # cap at 10
+
     # Update baseline & counts
     insight.vector_baseline = session_vec
     insight.chunks_seen = len(all_chunks)

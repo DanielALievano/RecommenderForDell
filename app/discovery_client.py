@@ -56,26 +56,50 @@ _MOCK_PRODUCTS: dict[str, dict[str, Any]] = {
 _DEFAULT_PRODUCT_KEYS = ["Dell XPS 15", "Dell Inspiron 16 Plus"]
 
 
+def _make_dynamic_card(name: str) -> dict[str, Any]:
+    """Generate a product card for any product name, even ones not in the mock catalog."""
+    slug = name.lower().replace(" ", "-").replace("/", "-")
+    return {
+        "id": slug,
+        "name": name,
+        "price": "See pricing",
+        "image": "",
+        "badge": "Viewed by you",
+        "specs": "Click to view full specifications",
+        "url": f"https://www.dell.com/en-us/search/results?q={name.replace(' ', '+')}",
+    }
+
+
 class MockDiscoveryClient(DiscoveryClient):
     async def fetch(self, insight: SessionInsight) -> dict[str, Any]:
-        # Build product cards for products_of_interest, fall back to defaults
-        keys = insight.products_of_interest or _DEFAULT_PRODUCT_KEYS
-        products = [_MOCK_PRODUCTS[k] for k in keys if k in _MOCK_PRODUCTS]
+        action_type = insight.recommended_action.type if insight.recommended_action else "show_comparison"
+
+        # Build product cards — first try catalog, then generate dynamic cards
+        products = []
+        for key in (insight.products_of_interest or _DEFAULT_PRODUCT_KEYS):
+            # Try exact match first
+            if key in _MOCK_PRODUCTS:
+                products.append(_MOCK_PRODUCTS[key])
+            else:
+                # Fuzzy match against catalog
+                match = next(
+                    (v for k, v in _MOCK_PRODUCTS.items() if k.lower() in key.lower() or key.lower() in k.lower()),
+                    None,
+                )
+                products.append(match if match else _make_dynamic_card(key))
+
         if not products:
             products = [_MOCK_PRODUCTS[k] for k in _DEFAULT_PRODUCT_KEYS]
 
-        action_type = insight.recommended_action.type if insight.recommended_action else "show_comparison"
-        message = (
-            insight.recommended_action.message
-            if insight.recommended_action
-            else f"Based on your browsing, here are the top picks for you."
-        )
-
-        if len(products) >= 2 and action_type == "show_comparison":
-            message = f"Compare {products[0]['name']} vs {products[1]['name']} — find your perfect match."
+        message = insight.recommended_action.message if insight.recommended_action else ""
+        if not message:
+            if len(products) >= 2:
+                message = f"Based on your browsing — compare {products[0]['name']} and {products[1]['name']}."
+            else:
+                message = f"You've been looking at {products[0]['name']} — here's what to know."
 
         return {
-            "products": products,
+            "products": products[:3],
             "message": message,
             "action_type": action_type,
         }

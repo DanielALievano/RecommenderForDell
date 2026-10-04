@@ -124,18 +124,32 @@ def _dict_to_insight(d: dict[str, Any], prior: Optional[SessionInsight]) -> Sess
     )
 
 
-_STUB_INSIGHT = SessionInsight(
-    intent="User is browsing Dell laptops with interest in performance specs",
-    confidence=0.72,
-    decision_stage="evaluating",
-    friction_point="",
-    products_of_interest=["Dell XPS 15", "Dell Inspiron 16 Plus"],
-    recommended_action=RecommendedAction(
-        type="show_comparison",
-        message="Compare the XPS 15 and Inspiron 16 Plus side-by-side",
-        trigger="multi_pass high interest",
-    ),
-)
+def _extract_products_from_chunks(recent_chunks: list[Any], prior_insight: Optional[SessionInsight]) -> list[str]:
+    """Pull product names from narrative chunks and merge with prior insight."""
+    products: list[str] = list(prior_insight.products_of_interest) if prior_insight else []
+    import re
+    product_pattern = re.compile(
+        r'\b(xps\s*\d*|inspiron\s*\d*|latitude\s*\d*|precision\s*\d*|'
+        r'vostro\s*\d*|alienware\s*\w*|g\d{1,2}\s*\d*|dell\s+\w+\s*\d*)\b',
+        re.IGNORECASE,
+    )
+    for chunk in recent_chunks:
+        text = chunk.get("text", "") if isinstance(chunk, dict) else str(chunk)
+        # Check for explicit PRODUCTS BROWSED line
+        for line in text.splitlines():
+            if "PRODUCTS BROWSED" in line:
+                m = re.search(r'"([^"]+)"', line)
+                if m:
+                    for p in m.group(1).split("|"):
+                        p = p.strip()
+                        if p and p not in products:
+                            products.append(p)
+            else:
+                for m in product_pattern.finditer(line):
+                    p = m.group(0).strip().title()
+                    if len(p) > 3 and p not in products:
+                        products.append(p)
+    return products[:10]
 
 
 async def run_inference(
@@ -145,10 +159,30 @@ async def run_inference(
     delta: float,
 ) -> SessionInsight:
     """Call the LLM and return a SessionInsight. Falls back to stub on error."""
+    # Extract products actually browsed regardless of stub/live path
+    browsed_products = _extract_products_from_chunks(recent_chunks, prior_insight)
+
     if settings.genai_api_url.lower().startswith("http://localhost") or \
        settings.opensource_llm_key in ("placeholder", ""):
-        # Offline stub
-        stub = _STUB_INSIGHT.model_copy()
+        # Offline stub — but use real browsed products
+        products = browsed_products or ["Dell XPS 15", "Dell Inspiron 16 Plus"]
+        action_msg = (
+            f"Compare {products[0]} vs {products[1]}"
+            if len(products) >= 2
+            else f"Learn more about {products[0]}" if products else "Explore Dell laptops"
+        )
+        stub = SessionInsight(
+            intent=f"User is evaluating {', '.join(products[:3]) or 'Dell laptops'}",
+            confidence=0.72,
+            decision_stage="evaluating",
+            friction_point="",
+            products_of_interest=products,
+            recommended_action=RecommendedAction(
+                type="show_comparison" if len(products) >= 2 else "highlight_deal",
+                message=action_msg,
+                trigger="multi_pass high interest",
+            ),
+        )
         stub.llm_call_count = (prior_insight.llm_call_count + 1) if prior_insight else 1
         stub.chunks_seen = meta.get("total_events", 0)
         stub.updated_at = datetime.now(timezone.utc).isoformat()
