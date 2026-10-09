@@ -35,23 +35,46 @@
     });
   }
 
-  var SESSION_ID = (() => {
-    try {
-      var k = "lss_sid_demo";
-      var id = sessionStorage.getItem(k);
-      if (!id) { id = "s_ecid_" + uuidv4(); sessionStorage.setItem(k, id); }
-      return id;
-    } catch (e) { return "s_ecid_" + uuidv4(); }
+  // Read/write cookies — mirrors what the React useCookieStore hook uses
+  function _getCookie(name) {
+    var m = document.cookie.match(new RegExp("(?:^|; )" + name + "=([^;]*)"));
+    return m ? decodeURIComponent(m[1]) : null;
+  }
+  function _setCookie(name, value, days) {
+    var c = name + "=" + encodeURIComponent(value) + ";path=/;SameSite=Lax";
+    if (days) c += ";expires=" + new Date(Date.now() + days * 864e5).toUTCString();
+    document.cookie = c;
+  }
+
+  // Session ID — same cookie as React hook (lss_sid), persists across page loads
+  var SESSION_ID = (function () {
+    var id = _getCookie("lss_sid");
+    if (!id) { id = "s_ecid_" + uuidv4(); _setCookie("lss_sid", id); }
+    return id;
   })();
 
-  var VISIT_NUMBER = (() => {
-    try {
-      var k = "lss_visit_demo";
-      var n = parseInt(localStorage.getItem(k) || "0", 10) + 1;
-      localStorage.setItem(k, String(n));
-      return n;
-    } catch (e) { return 1; }
+  // Visit number — same cookie as React hook (lss_visit)
+  var VISIT_NUMBER = (function () {
+    var n = parseInt(_getCookie("lss_visit") || "0", 10) + 1;
+    _setCookie("lss_visit", String(n), 365);
+    return n;
   })();
+
+  // Seen products — read from the React-managed lss_products cookie on startup,
+  // then keep in sync so both layers share the same context
+  var _seenProducts = (function () {
+    try { return JSON.parse(_getCookie("lss_products") || "[]"); } catch (e) { return []; }
+  })();
+
+  function _addProduct(name) {
+    if (!name || name.length < 3) return;
+    var clean = name.trim().replace(/\s+/g, " ").slice(0, 100);
+    if (!_seenProducts.includes(clean)) {
+      _seenProducts.push(clean);
+      _seenProducts = _seenProducts.slice(-20);
+      _setCookie("lss_products", JSON.stringify(_seenProducts), 30);
+    }
+  }
 
   // -----------------------------------------------------------------------
   // Debug panel (shadow DOM so it doesn't break dell.com styles)
@@ -332,6 +355,13 @@
       if (_buffer.length === 0) return;
       var narrative = _buffer.join("\n");
       _buffer = [];
+
+      // Re-read cookie in case React hook updated it during this session
+      try { _seenProducts = JSON.parse(_getCookie("lss_products") || "[]"); } catch(e) {}
+      var productContext = _seenProducts.length > 0
+        ? "[0s] [T1 0.90] PRODUCTS BROWSED \"" + _seenProducts.join(" | ") + "\" (session_context)\n"
+        : "";
+
       var payload = {
         session_id: SESSION_ID,
         visit_number: VISIT_NUMBER,
@@ -341,7 +371,7 @@
         active_seconds: _activeSeconds,
         total_events: _eventCount,
         trigger: trigger||"timer",
-        narrative: narrative,
+        narrative: productContext + narrative,
       };
       _log("sys", "Flushing "+narrative.split("\n").length+" events (trigger="+trigger+")");
       try {
@@ -523,34 +553,32 @@
 
   function _renderNudge(data) {
     try {
-      var existing=document.getElementById("lss-nudge-host");
-      if(existing) existing.remove();
-      var host=document.createElement("div");
-      host.id="lss-nudge-host";
-      host.style.cssText="position:fixed;top:0;left:0;right:0;z-index:2147483646;pointer-events:none;";
-      document.body.insertBefore(host,document.body.firstChild);
-      var shadow=host.attachShadow({mode:"closed"});
-      var style=document.createElement("style");
-      style.textContent=`.strip{background:#0076CE;color:#fff;font-family:-apple-system,sans-serif;font-size:14px;padding:10px 16px;display:flex;align-items:center;gap:12px;pointer-events:all;box-shadow:0 2px 8px rgba(0,0,0,.25)}.msg{flex:1}.chip{background:rgba(255,255,255,.15);border-radius:4px;padding:2px 8px;font-size:12px;white-space:nowrap;cursor:pointer;text-decoration:none;color:#fff}.chip:hover{background:rgba(255,255,255,.3)}.x{background:none;border:none;color:rgba(255,255,255,.8);font-size:18px;cursor:pointer;padding:0 4px}`;
-      var strip=document.createElement("div"); strip.className="strip";
-      var msg=document.createElement("span"); msg.className="msg"; msg.textContent=data.message||"Suggestion available";
-      strip.appendChild(msg);
-      if(data.products){data.products.slice(0,2).forEach(function(p){var a=document.createElement("a");a.className="chip";a.textContent=p.name||p.id;a.href=p.url||"#";a.target="_blank";strip.appendChild(a);});}
-      var btn=document.createElement("button"); btn.className="x"; btn.textContent="×";
-      btn.addEventListener("click",function(){host.remove();});
-      strip.appendChild(btn);
-      shadow.appendChild(style); shadow.appendChild(strip);
-    } catch(e){}
+      if (window.__lssNudge) {
+        window.__lssNudge.show(data);
+      }
+    } catch(e) {}
+  }
+
+  // Load the React nudge bundle from the backend, then boot the demo
+  function _loadBundle(cb) {
+    if (window.__lssNudge) { cb(); return; }
+    var s = document.createElement("script");
+    s.src = API_BASE + "/static/nudge-panel.iife.js";
+    s.onload = cb;
+    s.onerror = function() { console.warn("[LSS] Could not load nudge bundle — is the backend running?"); cb(); };
+    document.head.appendChild(s);
   }
 
   // -----------------------------------------------------------------------
   // Init
   // -----------------------------------------------------------------------
-  _initPanel();
-  _pingBackend();
-  _log("sys", "Session: "+SESSION_ID);
-  _log("sys", "Visit #"+VISIT_NUMBER+" on "+location.hostname);
-  _log("sys", "Listening for events… interact with the page!");
+  _loadBundle(function() {
+    _initPanel();
+    _pingBackend();
+    _log("sys", "Session: "+SESSION_ID);
+    _log("sys", "Visit #"+VISIT_NUMBER+" on "+location.hostname);
+    _log("sys", "Listening for events… interact with the page!");
+  });
 
   console.log("[LiveStreamSignals] Demo active. Session:", SESSION_ID);
   console.log("  Manual flush: window._lssFlush()");

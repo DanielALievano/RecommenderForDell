@@ -53,11 +53,47 @@ class MockDiscoveryClient(DiscoveryClient):
         else:
             message = insight.recommended_action.message if insight.recommended_action else "Here are some options you haven't explored yet."
 
+        # Attach a personalized reason to each product
+        use_case = signals.get("use_case", "everyday")
+        seen_names = seen[:2]  # up to 2 products the user browsed
+        browsed_context = (
+            f"you've been looking at {' and '.join(seen_names)}"
+            if seen_names else "your recent browsing"
+        )
+
+        uc_phrases = {
+            "gaming":      "gaming setup",
+            "creator":     "creative workflow",
+            "business":    "work needs",
+            "student":     "studies",
+            "workstation": "professional workloads",
+            "everyday":    "everyday use",
+        }
+        uc_phrase = uc_phrases.get(use_case, "browsing interests")
+
+        products_with_reasons = []
+        for p in recs:
+            p = dict(p)  # don't mutate catalog entry
+            tier = p.get("tier", "mid")
+            family = p.get("family", "")
+
+            if tier == "flagship":
+                reason = f"Since {browsed_context}, this is the top-tier upgrade you haven't seen yet."
+            elif tier == "premium":
+                reason = f"A strong match for your {uc_phrase} — not yet on your radar."
+            elif tier == "budget":
+                reason = f"Best value option for your {uc_phrase} that you haven't explored."
+            else:
+                reason = f"Complements what you've browsed — a fresh pick for your {uc_phrase}."
+
+            p["reason"] = reason
+            products_with_reasons.append(p)
+
         return {
-            "products": recs,
+            "products": products_with_reasons,
             "message": message,
             "action_type": action_type,
-            "signals": signals,  # passed through for debug panel
+            "signals": signals,
         }
 
 

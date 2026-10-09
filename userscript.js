@@ -8,6 +8,7 @@
 // @match        https://dell.com/*
 // @grant        none
 // @run-at       document-end
+// @require      http://localhost:8000/static/nudge-panel.iife.js
 // ==/UserScript==
 
 (function () {
@@ -549,30 +550,9 @@
 
   function _renderNudge(data) {
     try {
-      var old = document.getElementById("lss-nudge-host");
-      if (old) old.remove();
-      var host = document.createElement("div");
-      host.id = "lss-nudge-host";
-      host.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:2147483646;pointer-events:none;";
-      document.body.insertBefore(host, document.body.firstChild);
-      var shadow = host.attachShadow({ mode: "closed" });
-      var style = document.createElement("style");
-      style.textContent = ".strip{background:#0076CE;color:#fff;font-family:-apple-system,sans-serif;font-size:14px;padding:10px 16px;display:flex;align-items:center;gap:12px;pointer-events:all;box-shadow:0 2px 8px rgba(0,0,0,.25)}.msg{flex:1}.chip{background:rgba(255,255,255,.15);border-radius:4px;padding:2px 8px;font-size:12px;white-space:nowrap;cursor:pointer;text-decoration:none;color:#fff;margin-right:4px}.chip:hover{background:rgba(255,255,255,.3)}.x{background:none;border:none;color:rgba(255,255,255,.8);font-size:18px;cursor:pointer;padding:0 4px}";
-      var strip = document.createElement("div"); strip.className = "strip";
-      var msg = document.createElement("span"); msg.className = "msg"; msg.textContent = data.message || "Based on your browsing, here are some picks for you.";
-      strip.appendChild(msg);
-      if (data.products && data.products.length > 0) {
-        data.products.slice(0, 3).forEach(function (p) {
-          var a = document.createElement("a"); a.className = "chip";
-          a.textContent = p.name || p.id || "View";
-          a.href = p.url || "#"; a.target = "_blank"; a.rel = "noopener";
-          strip.appendChild(a);
-        });
+      if (window.__lssNudge) {
+        window.__lssNudge.show(data);
       }
-      var btn = document.createElement("button"); btn.className = "x"; btn.textContent = "\xD7";
-      btn.addEventListener("click", function () { host.remove(); });
-      strip.appendChild(btn);
-      shadow.appendChild(style); shadow.appendChild(strip);
     } catch (e) {}
   }
 

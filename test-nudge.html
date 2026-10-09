@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Nudge Panel Test</title>
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', sans-serif; background: #f0f4f8; }
+    .page { max-width: 900px; margin: 0 auto; padding: 40px 24px; }
+    h1 { color: #0076CE; }
+    .controls { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 24px; }
+    button { background: #0076CE; color: #fff; border: none; border-radius: 6px; padding: 10px 20px; font-size: 14px; cursor: pointer; font-family: inherit; }
+    button:hover { background: #005fa3; }
+    button.secondary { background: #344D6D; }
+    button.danger { background: #dc2626; }
+    pre { background: #1a1a2e; color: #86efac; padding: 16px; border-radius: 8px; font-size: 12px; margin-top: 24px; max-height: 200px; overflow-y: auto; }
+  </style>
+</head>
+<body>
+<div class="page">
+  <h1>Nudge Panel Test</h1>
+  <p>Click a button to fire a mock nudge. The "Curated for you" pill should slide up from the bottom.</p>
+  <div class="controls">
+    <button onclick="fireNudge('xps')">Fire XPS Nudge</button>
+    <button onclick="fireNudge('inspiron')" class="secondary">Fire Inspiron Nudge</button>
+    <button onclick="fireNudge('alienware')" class="secondary">Fire Alienware Nudge</button>
+    <button onclick="fireNudge('empty')">Fire Empty</button>
+    <button onclick="resetAll()" class="danger">Reset Dismissed</button>
+    <button onclick="hideNudge()" style="background:#6b7280">Hide</button>
+  </div>
+  <pre id="log">Waiting for bundle…</pre>
+</div>
+
+<script src="http://localhost:8000/static/nudge-panel.iife.js"></script>
+<script>
+  const log = document.getElementById('log');
+  function out(msg) {
+    log.textContent += '\n' + new Date().toTimeString().slice(0,8) + '  ' + msg;
+    log.scrollTop = log.scrollHeight;
+  }
+
+  const NUDGES = {
+    xps: {
+      action_type: 'nudge_xps',
+      message: 'For your creative work — you haven\'t seen these yet. Worth a look.',
+      confidence: 0.91,
+      trigger: 'viewport_dwell',
+      products: [
+        { id: 'xps-16-9640', name: 'Dell XPS 16 9640', family: 'xps', price_usd: 1999, badge: 'Flagship Creator',
+          reason: 'Since you\'ve been browsing XPS 15 and Inspiron 16, this is the top-tier creative upgrade you haven\'t seen yet.',
+          specs: 'Intel Core Ultra 9 185H, 32GB LPDDR5X, 1TB SSD, NVIDIA RTX 4070, 16.3" OLED',
+          highlights: ['OLED 3.2K display', 'Intel Core Ultra 9', 'RTX 4070'],
+          url: '#' },
+        { id: 'precision-5680', name: 'Dell Precision 5680', family: 'precision', price_usd: 2199, badge: 'Pro Workstation',
+          reason: 'A strong match for your creative workflow — professional GPU you haven\'t explored yet.',
+          specs: 'Intel Core i9-13900H, 32GB DDR5, NVIDIA RTX 5000 Ada, 15.6" OLED 3.5K',
+          highlights: ['NVIDIA RTX 5000 Ada', 'OLED 3.5K', 'ISV certified'],
+          url: '#' },
+        { id: 'inspiron-16-plus', name: 'Dell Inspiron 16 Plus 7640', family: 'inspiron', price_usd: 1149, badge: "Inspiron's Best",
+          reason: 'Complements what you\'ve browsed — a fresh pick for your creative workflow at a lower price point.',
+          specs: 'Intel Core Ultra 7 155H, 16GB LPDDR5, 1TB SSD, NVIDIA RTX 4060, 16" 3K',
+          highlights: ['3K display', 'RTX 4060', 'mid-range powerhouse'],
+          url: '#' },
+      ],
+    },
+    inspiron: {
+      action_type: 'nudge_inspiron',
+      message: 'Great everyday laptops based on your browsing.',
+      confidence: 0.78,
+      trigger: 'idle_start',
+      products: [
+        { id: 'inspiron-15', name: 'Inspiron 15 (3535)', family: 'inspiron', price_usd: 649, badge: 'Top Value',
+          reason: 'Perfect for everyday productivity and web browsing',
+          highlights: ['AMD Ryzen 5 processor', '15.6" FHD display', '12-hour battery'], url: '#' },
+        { id: 'inspiron-16p', name: 'Inspiron 16 Plus (7630)', family: 'inspiron', price_usd: 999, badge: 'Most Popular',
+          reason: 'Step up to a bigger screen with great performance',
+          highlights: ['Intel Core i7', 'Dedicated NVIDIA GPU', 'QHD+ display'], url: '#' },
+      ],
+    },
+    alienware: {
+      action_type: 'nudge_alienware',
+      message: 'Ready to level up your gaming rig?',
+      confidence: 0.88,
+      trigger: 'text_copy',
+      products: [
+        { id: 'aw-m18-r2', name: 'Alienware m18 R2', family: 'alienware', price_usd: 2499, badge: 'Ultimate Gaming',
+          reason: 'Unmatched performance for AAA gaming and streaming',
+          highlights: ['Intel Core i9-14900HX', 'NVIDIA RTX 4090', '18" 480Hz display'], url: '#' },
+      ],
+    },
+    empty: {
+      action_type: 'nudge_empty',
+      message: 'Keep browsing — we\'re learning your preferences.',
+      confidence: 0.4, trigger: 'timer', products: [],
+    },
+  };
+
+  function fireNudge(type) {
+    if (!window.__lssNudge) { out('ERROR: __lssNudge not loaded'); return; }
+    window.__lssNudge.clearDismissed();
+    const data = NUDGES[type];
+    out('Firing: ' + type + ' (' + data.products.length + ' products)');
+    window.__lssNudge.show(data);
+  }
+
+  function hideNudge() {
+    window.__lssNudge?.hide();
+    out('hide() called');
+  }
+
+  function resetAll() {
+    window.__lssNudge?.clearDismissed();
+    out('Dismissed list cleared');
+  }
+
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      out(window.__lssNudge ? 'Bundle ready — __lssNudge is set' : 'ERROR: __lssNudge missing');
+    }, 200);
+  });
+</script>
+</body>
+</html>

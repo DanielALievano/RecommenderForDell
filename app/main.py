@@ -5,6 +5,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.discovery_client import create_discovery_client
@@ -55,8 +57,14 @@ app.add_middleware(
 
 app.include_router(clickstream.router)
 app.include_router(stream.router)
+app.mount("/static", StaticFiles(directory="dist"), name="static")
 
 
 @app.get("/health", tags=["health"])
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/demo", tags=["demo"], include_in_schema=False)
+async def demo():
+    return FileResponse("static/demo.html")
