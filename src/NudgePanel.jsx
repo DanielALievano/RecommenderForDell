@@ -4,14 +4,17 @@ import { useCookieStore } from "./hooks/useCookieStore.js";
 const DELL_BLUE = "#0076CE";
 
 const FAMILY_COLORS = {
-  xps:        { bg: "#0076CE", accent: "#005fa3" },
-  inspiron:   { bg: "#00843D", accent: "#006830" },
-  alienware:  { bg: "#1a1a1a", accent: "#00aacc" },
-  "g-series": { bg: "#E85D00", accent: "#c44e00" },
-  latitude:   { bg: "#344D6D", accent: "#253755" },
-  precision:  { bg: "#5E2D91", accent: "#4a1f73" },
-  vostro:     { bg: "#6B6B6B", accent: "#555555" },
-  ultrasharp: { bg: "#0076CE", accent: "#005fa3" },
+  xps:        { bg: "#0076CE", accent: "#003f8a" },
+  inspiron:   { bg: "#00843D", accent: "#004d24" },
+  alienware:  { bg: "#0d0d0d", accent: "#007a99" },
+  "g-series": { bg: "#E85D00", accent: "#7a1a00" },
+  latitude:   { bg: "#344D6D", accent: "#0e1e36" },
+  precision:  { bg: "#5E2D91", accent: "#1e0044" },
+  vostro:     { bg: "#4b5563", accent: "#1f2937" },
+  ultrasharp: { bg: "#0076CE", accent: "#003f8a" },
+  chromebook: { bg: "#1a73e8", accent: "#0d47a1" },
+  optiplex:   { bg: "#2d6a4f", accent: "#1b4332" },
+  wyse:       { bg: "#6d4c41", accent: "#3e2723" },
 };
 
 function familyColors(family) {
@@ -257,13 +260,16 @@ function ProductCard({ product }) {
 
 // ─── Accessory card ───────────────────────────────────────────────────────────
 const CATEGORY_COLORS = {
-  dock:     { bg: "#1e3a5f", accent: "#162d4a" },
-  mouse:    { bg: "#1e3a5f", accent: "#162d4a" },
-  keyboard: { bg: "#1e3a5f", accent: "#162d4a" },
-  monitor:  { bg: "#0076CE", accent: "#005fa3" },
-  headset:  { bg: "#2d1b4e", accent: "#1e1135" },
-  hub:      { bg: "#1e3a5f", accent: "#162d4a" },
-  bag:      { bg: "#374151", accent: "#1f2937" },
+  dock:     { bg: "#0e7490", accent: "#164e63" },
+  mouse:    { bg: "#0076CE", accent: "#003f8a" },
+  keyboard: { bg: "#5E2D91", accent: "#1e0044" },
+  monitor:  { bg: "#0d9488", accent: "#134e4a" },
+  headset:  { bg: "#7c3aed", accent: "#2e1065" },
+  hub:      { bg: "#334155", accent: "#0f172a" },
+  bag:      { bg: "#92400e", accent: "#451a03" },
+  sleeve:   { bg: "#92400e", accent: "#451a03" },
+  webcam:   { bg: "#065f46", accent: "#022c22" },
+  stylus:   { bg: "#be185d", accent: "#500724" },
 };
 
 function AccessoryCard({ accessory }) {
