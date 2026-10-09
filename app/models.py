@@ -90,5 +90,6 @@ class NudgePayload(BaseModel):
     action_type: str
     message: str
     products: list[dict[str, Any]] = Field(default_factory=list)
+    accessories: list[dict[str, Any]] = Field(default_factory=list)
     trigger: str = ""
     confidence: float = 0.0

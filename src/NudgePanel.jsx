@@ -218,24 +218,141 @@ function ProductCard({ product }) {
       </div>
 
       {/* CTA */}
-      <a
-        href={url || "#"}
-        target="_blank"
-        rel="noopener noreferrer"
+      <div style={{ padding: "8px 12px 10px", display: "flex", flexDirection: "column", gap: "5px" }}>
+        <button
+          style={{
+            background: DELL_BLUE,
+            color: "#fff",
+            border: "none",
+            borderRadius: "4px",
+            padding: "8px",
+            fontSize: "12px",
+            fontWeight: 600,
+            cursor: "pointer",
+            width: "100%",
+            letterSpacing: "0.02em",
+          }}
+        >
+          Add to Cart
+        </button>
+        <a
+          href={url || "#"}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: "block",
+            textAlign: "center",
+            fontSize: "11px",
+            color: DELL_BLUE,
+            textDecoration: "none",
+            padding: "3px 0",
+          }}
+        >
+          View Product →
+        </a>
+      </div>
+    </div>
+  );
+}
+
+// ─── Accessory card ───────────────────────────────────────────────────────────
+const CATEGORY_COLORS = {
+  dock:     { bg: "#1e3a5f", accent: "#162d4a" },
+  mouse:    { bg: "#1e3a5f", accent: "#162d4a" },
+  keyboard: { bg: "#1e3a5f", accent: "#162d4a" },
+  monitor:  { bg: "#0076CE", accent: "#005fa3" },
+  headset:  { bg: "#2d1b4e", accent: "#1e1135" },
+  hub:      { bg: "#1e3a5f", accent: "#162d4a" },
+  bag:      { bg: "#374151", accent: "#1f2937" },
+};
+
+function AccessoryCard({ accessory }) {
+  const { name, price_usd, category, pairs_with, url } = accessory;
+  const colors = CATEGORY_COLORS[(category || "").toLowerCase()] || { bg: "#334155", accent: "#1e293b" };
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        borderRadius: "6px",
+        border: "1px solid #dde3ea",
+        overflow: "hidden",
+        background: "#fff",
+        boxShadow: "0 2px 6px rgba(0,0,0,0.06)",
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      }}
+    >
+      {/* Colored header — name + price side by side */}
+      <div
         style={{
-          display: "block",
-          background: DELL_BLUE,
+          background: `linear-gradient(135deg, ${colors.bg} 0%, ${colors.accent} 100%)`,
+          padding: "9px 12px",
           color: "#fff",
-          textDecoration: "none",
-          textAlign: "center",
-          padding: "9px",
-          fontSize: "12px",
-          fontWeight: 600,
-          letterSpacing: "0.02em",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: "8px",
         }}
       >
-        View Product →
-      </a>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {category && (
+            <div style={{ fontSize: "9px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", opacity: 0.75, marginBottom: "3px" }}>
+              {category}
+            </div>
+          )}
+          <div style={{ fontSize: "12px", fontWeight: 700, lineHeight: 1.3 }}>
+            {name || accessory.id}
+          </div>
+        </div>
+        {price_usd && (
+          <div style={{ fontSize: "12px", fontWeight: 700, whiteSpace: "nowrap", paddingTop: "14px" }}>
+            ${Number(price_usd).toLocaleString()}
+          </div>
+        )}
+      </div>
+
+      {/* Pairing note */}
+      {pairs_with && (
+        <div style={{ padding: "6px 12px", fontSize: "10px", color: "#6b7280", lineHeight: 1.4, background: "#fff" }}>
+          Pairs with: <span style={{ color: "#374151", fontWeight: 600 }}>{pairs_with}</span>
+        </div>
+      )}
+
+      {/* Buttons */}
+      <div style={{ padding: "8px 12px 10px", display: "flex", flexDirection: "column", gap: "5px", marginTop: "auto" }}>
+        <button
+          style={{
+            background: DELL_BLUE,
+            color: "#fff",
+            border: "none",
+            borderRadius: "4px",
+            padding: "7px",
+            fontSize: "11px",
+            fontWeight: 600,
+            cursor: "pointer",
+            width: "100%",
+            letterSpacing: "0.02em",
+          }}
+        >
+          Add to Cart
+        </button>
+        <a
+          href={url || "#"}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: "block",
+            textAlign: "center",
+            fontSize: "10px",
+            color: DELL_BLUE,
+            textDecoration: "none",
+            padding: "3px 0",
+          }}
+        >
+          View product →
+        </a>
+      </div>
     </div>
   );
 }
@@ -243,6 +360,7 @@ function ProductCard({ product }) {
 // ─── Bottom tray ──────────────────────────────────────────────────────────────
 function RecommendationsTray({ data, onCollapse, onClose }) {
   const products = data?.products ?? [];
+  const accessories = data?.accessories ?? [];
   const message = data?.message ?? "We found some picks for you — worth a look.";
 
   return (
@@ -300,23 +418,61 @@ function RecommendationsTray({ data, onCollapse, onClose }) {
         </button>
       </div>
 
-      {/* Horizontal card row */}
-      <div
-        style={{
-          display: "flex",
-          gap: "12px",
-          padding: "14px 16px",
-          overflowX: "auto",
-          background: "#f8f9fb",
-          scrollbarWidth: "thin",
-        }}
-      >
-        {products.length > 0 ? (
-          products.map((p, i) => <ProductCard key={p.id || i} product={p} />)
-        ) : (
-          <div style={{ padding: "24px 0", color: "#aaa", fontSize: "13px", width: "100%", textAlign: "center" }}>
-            Browsing more products will help us personalize your picks.
-          </div>
+      {/* Main body — products left, accessories right */}
+      <div style={{ display: "flex", background: "#f8f9fb", alignItems: "stretch" }}>
+
+        {/* Product cards — scrollable row */}
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            gap: "12px",
+            padding: "14px 16px",
+            overflowX: "auto",
+            scrollbarWidth: "thin",
+          }}
+        >
+          {products.length > 0 ? (
+            products.map((p, i) => <ProductCard key={p.id || i} product={p} />)
+          ) : (
+            <div style={{ padding: "24px 0", color: "#aaa", fontSize: "13px", width: "100%", textAlign: "center" }}>
+              Browsing more products will help us personalize your picks.
+            </div>
+          )}
+        </div>
+
+        {/* Accessories column */}
+        {accessories.length > 0 && (
+          <>
+            {/* Vertical divider */}
+            <div style={{ width: "1px", background: "#dde3ea", flexShrink: 0, margin: "10px 0" }} />
+
+            <div
+              style={{
+                width: "270px",
+                flexShrink: 0,
+                padding: "14px 14px 14px 16px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "10px",
+                overflowY: "auto",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "15px",
+                  fontWeight: 700,
+                  color: "#1a1a1a",
+                  letterSpacing: "-0.01em",
+                }}
+              >
+                Complete your setup
+              </div>
+              {accessories.slice(0, 2).map((a, i) => (
+                <AccessoryCard key={a.id || i} accessory={a} />
+              ))}
+            </div>
+          </>
         )}
       </div>
     </div>
